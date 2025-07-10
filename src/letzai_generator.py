@@ -173,7 +173,7 @@ class LetzAIGenerator:
                     error_msg = data.get("progressMessage", "Generation failed")
                     raise Exception(f"Image generation failed: {error_msg}")
                 
-                elif status in ["new", "in progress"]:
+                elif status in ["new", "in progress", "generating"]:
                     # Wait before polling again
                     time.sleep(2)
                     continue
