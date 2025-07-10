@@ -7,6 +7,7 @@ from PIL import Image
 import numpy as np
 from server import PromptServer
 import comfy.utils
+import comfy.model_management
 
 class LetzAIGenerator:
     CATEGORY = "LetzAI"
@@ -64,6 +65,10 @@ class LetzAIGenerator:
         }
         
         try:
+            # Check for interruption before starting
+            if comfy.model_management.processing_interrupted():
+                raise Exception("Generation cancelled by user")
+            
             # Send the generation request
             PromptServer.instance.send_sync("letzai.status", {"message": "Sending generation request..."})
             
@@ -125,9 +130,16 @@ class LetzAIGenerator:
             return (image_tensor,)
             
         except Exception as e:
-            error_msg = f"LetzAI generation failed: {str(e)}"
-            PromptServer.instance.send_sync("letzai.error", {"message": error_msg})
-            raise Exception(error_msg)
+            error_str = str(e)
+            if "cancelled by user" in error_str:
+                # User cancellation - send different message type
+                PromptServer.instance.send_sync("letzai.status", {"message": "🛑 Generation cancelled by user"})
+                raise Exception("Generation cancelled by user")
+            else:
+                # Other errors
+                error_msg = f"LetzAI generation failed: {error_str}"
+                PromptServer.instance.send_sync("letzai.error", {"message": error_msg})
+                raise Exception(error_msg)
     
     def _poll_for_completion(self, image_id, api_key, max_wait_time=300):
         """Poll the API until image generation is complete"""
@@ -143,6 +155,11 @@ class LetzAIGenerator:
         last_progress = 0
         
         while True:
+            # Check for ComfyUI interruption
+            if comfy.model_management.processing_interrupted():
+                self._interrupt_generation(image_id, api_key)
+                raise Exception("Generation cancelled by user")
+            
             if time.time() - start_time > max_wait_time:
                 raise Exception("Image generation timed out")
             
@@ -198,6 +215,34 @@ class LetzAIGenerator:
                     
             except requests.RequestException as e:
                 raise Exception(f"Network error while polling: {str(e)}")
+    
+    def _interrupt_generation(self, image_id, api_key):
+        """Interrupt the LetzAI generation using the API"""
+        
+        try:
+            headers = {
+                "Authorization": f"Bearer {api_key}"
+            }
+            
+            response = requests.put(f"https://api.letz.ai/images/{image_id}/interruption", 
+                                  headers=headers, 
+                                  timeout=10)
+            
+            if response.status_code == 204:
+                PromptServer.instance.send_sync("letzai.status", {
+                    "message": "✅ Generation cancelled successfully"
+                })
+            else:
+                # Log but don't fail if interruption fails
+                PromptServer.instance.send_sync("letzai.status", {
+                    "message": f"⚠️ Could not cancel generation (HTTP {response.status_code})"
+                })
+                
+        except Exception as e:
+            # Log but don't fail if interruption fails
+            PromptServer.instance.send_sync("letzai.status", {
+                "message": f"⚠️ Could not cancel generation: {str(e)}"
+            })
     
     def _download_and_convert_image(self, image_url):
         """Download image from URL and convert to ComfyUI tensor format"""

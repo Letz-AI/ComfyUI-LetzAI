@@ -24,6 +24,9 @@ app.registerExtension({
                 if (message.includes("completed")) {
                     node.bgcolor = "#2d5a2d"; // Green background for success
                     node.title = "LetzAI Generator ✅";
+                } else if (message.includes("cancelled")) {
+                    node.bgcolor = "#5a4a2d"; // Orange background for cancelled
+                    node.title = "LetzAI Generator 🛑";
                 } else if (message.includes("failed") || message.includes("error")) {
                     node.bgcolor = "#5a2d2d"; // Red background for error
                     node.title = "LetzAI Generator ❌";
