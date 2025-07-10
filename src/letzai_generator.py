@@ -71,15 +71,38 @@ class LetzAIGenerator:
                                    json=post_data, 
                                    timeout=30)
             
-            if response.status_code != 200:
-                error_msg = f"API request failed with status {response.status_code}"
+            # Accept both 200 (OK) and 201 (Created) as successful responses
+            if response.status_code not in [200, 201]:
+                # Provide specific error messages based on status code
+                if response.status_code == 400:
+                    error_msg = "Bad Request - Check your parameters (width, height, quality, creativity, mode, version)"
+                elif response.status_code == 401:
+                    error_msg = "Unauthorized - Invalid API key. Please check your LetzAI API key"
+                elif response.status_code == 403:
+                    error_msg = "Forbidden - API key valid but access denied. Check your subscription status"
+                elif response.status_code == 429:
+                    error_msg = "Rate Limited - Too many requests. Please wait and try again"
+                elif response.status_code == 500:
+                    error_msg = "LetzAI Server Error - Please try again later"
+                else:
+                    error_msg = f"API request failed with HTTP status {response.status_code}"
+                
+                # Try to get more details from the API response
                 try:
                     error_data = response.json()
                     if "message" in error_data:
-                        error_msg += f": {error_data['message']}"
+                        error_msg += f" - {error_data['message']}"
+                    elif "error" in error_data:
+                        error_msg += f" - {error_data['error']}"
                 except:
-                    error_msg += f": {response.text}"
+                    # If we can't parse JSON, include raw response
+                    response_text = response.text[:200] if response.text else "No response body"
+                    error_msg += f" - Response: {response_text}"
+                
                 raise Exception(error_msg)
+            
+            # Success! Log the response status
+            PromptServer.instance.send_sync("letzai.status", {"message": f"✅ API responded successfully (HTTP {response.status_code})"})
             
             # Get the image ID from the response
             result = response.json()
@@ -87,6 +110,8 @@ class LetzAIGenerator:
                 raise Exception("No image ID returned from API")
             
             image_id = result["id"]
+            PromptServer.instance.send_sync("letzai.status", {"message": f"✅ Generation started (ID: {image_id[:8]}...)"})
+            
             
             # Poll for completion
             image_url = self._poll_for_completion(image_id, api_key)
@@ -122,7 +147,12 @@ class LetzAIGenerator:
                                       timeout=30)
                 
                 if response.status_code != 200:
-                    raise Exception(f"Failed to check image status: {response.status_code}")
+                    if response.status_code == 404:
+                        raise Exception(f"Image not found - Generation may have been cancelled or expired")
+                    elif response.status_code == 401:
+                        raise Exception(f"Unauthorized - API key invalid or expired")
+                    else:
+                        raise Exception(f"Failed to check image status: HTTP {response.status_code}")
                 
                 data = response.json()
                 status = data.get("status", "unknown")
