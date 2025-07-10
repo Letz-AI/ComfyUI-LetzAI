@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "comfyui-letzai"
 version = "0.1.0"
-description = "A custom ComfyUI node that selects images from a batch based on different criteria"
+description = "Custom ComfyUI Node for LetzAI Image Generation"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
-    {name = "LetzAI", email = "dev@letzai.com"},
+    {name = "LetzAI", email = "contact@letz.ai"},
 ]
 keywords = ["comfyui", "custom-node", "image-processing"]
 classifiers = [
