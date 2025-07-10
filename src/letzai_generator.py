@@ -6,6 +6,7 @@ import io
 from PIL import Image
 import numpy as np
 from server import PromptServer
+import comfy.utils
 
 class LetzAIGenerator:
     CATEGORY = "LetzAI"
@@ -137,6 +138,10 @@ class LetzAIGenerator:
         
         start_time = time.time()
         
+        # Create progress bar (assuming 100 steps for percentage)
+        pbar = comfy.utils.ProgressBar(100)
+        last_progress = 0
+        
         while True:
             if time.time() - start_time > max_wait_time:
                 raise Exception("Image generation timed out")
@@ -158,11 +163,21 @@ class LetzAIGenerator:
                 status = data.get("status", "unknown")
                 progress = data.get("progress", 0)
                 
+                # Update progress bar
+                if progress > last_progress:
+                    pbar.update(progress - last_progress)
+                    last_progress = progress
+                
+                # Also send status message (keeping for compatibility)
                 PromptServer.instance.send_sync("letzai.status", {
                     "message": f"Status: {status}, Progress: {progress}%"
                 })
                 
                 if status == "ready":
+                    # Ensure progress bar reaches 100%
+                    if last_progress < 100:
+                        pbar.update(100 - last_progress)
+                    
                     # Return the original image URL
                     if "imageVersions" in data and "original" in data["imageVersions"]:
                         return data["imageVersions"]["original"]
