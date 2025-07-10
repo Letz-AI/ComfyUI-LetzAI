@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "comfyui-letzai"
+version = "0.1.0"
+description = "A custom ComfyUI node that selects images from a batch based on different criteria"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "LetzAI", email = "dev@letzai.com"},
+]
+keywords = ["comfyui", "custom-node", "image-processing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "torch",
+    "requests",
+    "pillow",
+    "numpy",
+]
+
+[project.urls]
+Homepage = "https://github.com/letzai/ComfyUI-LetzAI"
+Repository = "https://github.com/letzai/ComfyUI-LetzAI"
+Issues = "https://github.com/letzai/ComfyUI-LetzAI/issues" 
